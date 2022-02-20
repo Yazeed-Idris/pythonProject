@@ -19,21 +19,25 @@ while True:
     day_choice = int(input('Day: '))
     if day_choice == 1:
         day_choice = 'Sunday'
+        day = 'U'
     elif day_choice == 2:
         day_choice = 'Monday'
+        day = 'M'
     elif day_choice == 3:
         day_choice = 'Tuesday'
+        day = 'T'
     elif day_choice == 4:
         day_choice = 'Wednesday'
+        day = 'W'
     elif day_choice == 5:
         day_choice = 'Thursday'
+        day = 'R'
 
     building = input('Input building number: ')
     time_range = input('Input start and finish time separated by "-" (E.g "1215-1300"): ')
     start_range = time_range[0:4]
     end_range = time_range[5:]
     rooms_dict = {}
-    day = day_choice[0]
     departments = [
         "ACFN",
         "AE",
@@ -76,29 +80,35 @@ while True:
         r = requests.get('https://registrar.kfupm.edu.sa/api/course-offering?term_code=202120&department_code=' + code)
         data = r.json()['data']
         for x in data:
-            course_day = str(x['class_days']).find(day)
+            course_day = str(x['class_days']).upper().find(day)
             start_time = x['start_time']
             end_time = x['end_time']
             section_building = x['building']
             room = x['room']
-            if course_day >= 0 and str(building) == section_building:
-                location = str(section_building) + '-' + str(room)
-                if str(room) not in rooms_dict:
-                    rooms_dict[str(room)] = [(start_time, end_time)]
+
+            if str(building) == str(section_building):
+                if course_day >= 0:
+                    if str(room) not in rooms_dict.keys():
+                        rooms_dict[str(room)] = [(start_time, end_time, 1)]
+                    else:
+                        rooms_dict[str(room)].append((start_time, end_time, 1))
                 else:
-                    rooms_dict[str(room)].append((start_time, end_time))
+                    if str(room) not in rooms_dict.keys():
+                        rooms_dict[str(room)] = [(start_time, end_time, -1)]
+                    else:
+                        rooms_dict[str(room)].append((start_time, end_time, -1))
     available_rooms = {}
     for room_no, times in rooms_dict.items():
         flag = True
         for time in times:
             start_time = time[0]
             end_time = time[1]
-            start_time = (int(start_time[0:2]) * 60) + int(start_time[2:])
-            end_time = (int(end_time[0:2]) * 60) + int(end_time[2:])
-            if (start_range <= start_time <= end_time <= end_time) or (
-                    start_time <= start_range <= end_time <= end_range) or (
-                    start_range <= start_time <= end_range <= end_time):
-                flag = False
+            if start_time is not None and end_time is not None:
+                start_time = (int(start_time[0:2]) * 60) + int(start_time[2:])
+                end_time = (int(end_time[0:2]) * 60) + int(end_time[2:])
+                if time[2] == 1:
+                    if not (end_time - start_range <= 0 or end_range - start_time <= 0):
+                        flag = False
         if flag:
             available_rooms[str(room_no)] = room_no
 
@@ -108,7 +118,11 @@ while True:
 
         print(
             f'Available rooms in building {building} from {convert_to_hours(start_range)} to {convert_to_hours(end_range)} on {day_choice} are:')
+        mokdysrooms = []
         for room in available_rooms:
+            mokdysrooms.append(room)
+        mokdysrooms.sort()
+        for room in mokdysrooms:
             print(room)
     search_again = input('Search again? (Y/N): ')
     if search_again == 'N' or search_again == 'n':
